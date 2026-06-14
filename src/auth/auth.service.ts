@@ -1,8 +1,8 @@
 import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UsuarioEntity } from './entities/usuario.entity';
@@ -16,126 +16,135 @@ import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 
 @Injectable()
 export class AuthService {
-  constructor(
-    @InjectRepository(UsuarioEntity)
-    private usuarioRepository: Repository<UsuarioEntity>,
-    private jwtService: JwtService,
-  ) {}
+    constructor(
+        @InjectRepository(UsuarioEntity)
+        private usuarioRepository: Repository<UsuarioEntity>,
+        private jwtService: JwtService,
+    ) {}
 
-  async getAll(): Promise<UsuarioEntity[]> {
-    const list = await this.usuarioRepository.find();
+    async getAll(): Promise<UsuarioEntity[]> {
+        const list = await this.usuarioRepository.find();
 
-    if (!list.length) {
-      throw new NotFoundException('No se encontraron usuarios.');
+        if (!list.length) {
+            throw new NotFoundException('No se encontraron usuarios.');
+        }
+
+        return list;
     }
 
-    return list;
-  }
+    async getById(id: number): Promise<UsuarioEntity> {
+        const user = await this.usuarioRepository.findOneBy({ id });
 
-  async getById(id: number): Promise<UsuarioEntity> {
-    const user = await this.usuarioRepository.findOneBy({ id });
+        if (!user) {
+            throw new NotFoundException('Usuario no encontrado.');
+        }
 
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado.');
+        return user;
     }
 
-    return user;
-  }
+    async getByEmail(email: string): Promise<UsuarioEntity> {
+        const user = await this.usuarioRepository.findOneBy({ email });
 
-  async getByEmail(email: string): Promise<UsuarioEntity> {
-    const user = await this.usuarioRepository.findOneBy({ email });
+        if (!user) {
+            throw new NotFoundException('Usuario no encontrado.');
+        }
 
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado.');
+        return user;
     }
 
-    return user;
-  }
+    async register(createUsuarioDto: CreateUsuarioDto): Promise<MessageDto> {
+        const numRound = 10;
+        const emailExists = await this.usuarioRepository.findOneBy({
+            email: createUsuarioDto.email,
+        });
 
-  async register(createUsuarioDto: CreateUsuarioDto): Promise<MessageDto> {
-    const numRound = 10;
-    const emailExists = await this.usuarioRepository.findOneBy({
-      email: createUsuarioDto.email,
-    });
+        if (emailExists) {
+            throw new ConflictException('El correo ya esta en uso.');
+        }
 
-    if (emailExists) {
-      throw new ConflictException('El correo ya esta en uso.');
+        createUsuarioDto.password = await bcrypt.hash(
+            createUsuarioDto.password,
+            numRound,
+        );
+
+        const nuevoUsuario = this.usuarioRepository.create({
+            nombre: createUsuarioDto.nombre,
+            email: createUsuarioDto.email,
+            password: createUsuarioDto.password,
+            rol: createUsuarioDto.rol,
+        });
+
+        await this.usuarioRepository.save(nuevoUsuario);
+
+        return new MessageDto('El usuario fue creado correctamente.');
     }
 
-    createUsuarioDto.password = await bcrypt.hash(
-      createUsuarioDto.password,
-      numRound,
-    );
+    async login(
+        loginUsuarioDto: LoginUsuarioDto,
+    ): Promise<{ accessToken: string }> {
+        const { email, password } = loginUsuarioDto;
+        const emailExists = await this.usuarioRepository.findOneBy({ email });
 
-    const nuevoUsuario = this.usuarioRepository.create({
-      nombre: createUsuarioDto.nombre,
-      email: createUsuarioDto.email,
-      password: createUsuarioDto.password,
-    });
+        if (!emailExists) {
+            throw new UnauthorizedException('Credenciales invalidas.');
+        }
 
-    await this.usuarioRepository.save(nuevoUsuario);
+        const passwordMatch = await bcrypt.compare(password, emailExists.password);
 
-    return new MessageDto('El usuario fue creado correctamente.');
-  }
+        if (!passwordMatch) {
+            throw new UnauthorizedException('Credenciales invalidas.');
+        }
 
-  async login(loginUsuarioDto: LoginUsuarioDto): Promise<{ accessToken: string }> {
-      const { email, password } = loginUsuarioDto;
-      const emailExists = await this.usuarioRepository.findOneBy({ email });
+        const token = await this.generateToken(emailExists.id);
 
-      if(!emailExists) {
-          throw new UnauthorizedException('Credenciales invalidas.');
-      }
+        return { accessToken: token.accessToken };
+    }
 
-      const passwordMatch = await bcrypt.compare(password, emailExists.password);
+    async generateToken(userId) {
+        const accessToken = this.jwtService.sign({ userId });
+        return { accessToken };
+    }
 
-      if(!passwordMatch) {
-          throw new UnauthorizedException('Credenciales invalidas.');
-      }
+    async update(
+        id: number,
+        updateUsuarioDto: UpdateUsuarioDto,
+    ): Promise<MessageDto> {
+        const numRound = 10;
+        const usuario = await this.getById(id);
 
-      const token = await this.generateToken(emailExists.id);
+        if (!usuario) {
+            throw new NotFoundException('Usuario no encontrado.');
+        }
 
-      return { accessToken: token.accessToken };
-  }
+        if (updateUsuarioDto.email) {
+            const exists = await this.getByEmail(updateUsuarioDto.email);
 
-  async generateToken(userId) {
-    const accessToken = this.jwtService.sign({ userId });
-    return { accessToken };
-  }
+            if (exists && exists.id !== id) {
+                throw new ConflictException('El correo ya esta en uso');
+            }
+        }
 
-  async update(id: number, updateUsuarioDto: UpdateUsuarioDto): Promise<MessageDto> {
-      const numRound = 10;
-      const usuario = await this.getById(id);
+        if (updateUsuarioDto.password) {
+            updateUsuarioDto.password = await bcrypt.hash(
+                updateUsuarioDto.password,
+                numRound,
+            );
+        }
 
-      if(!usuario) {
-          throw new NotFoundException('Usuario no encontrado.');
-      }
+        await this.usuarioRepository.update(id, updateUsuarioDto);
 
-      if(updateUsuarioDto.email) {
-          const exists = await this.getByEmail(updateUsuarioDto.email);
+        return new MessageDto('El usuario fue actualizado correctamente.');
+    }
 
-          if(exists && exists.id !== id) {
-              throw new ConflictException('El correo ya esta en uso');
-          }
-      }
+    async delete(id: number): Promise<MessageDto> {
+        const usuario = await this.getById(id);
 
-      if(updateUsuarioDto.password) {
-          updateUsuarioDto.password = await bcrypt.hash(updateUsuarioDto.password, numRound);
-      }
+        if (!usuario) {
+            throw new NotFoundException('Usuario no encontrado.');
+        }
 
-      await this.usuarioRepository.update(id, updateUsuarioDto);
+        await this.usuarioRepository.remove(usuario);
 
-      return new MessageDto('El usuario fue actualizado correctamente.');
-  }
-
-  async delete(id: number): Promise<MessageDto> {
-      const usuario = await this.getById(id);
-
-      if(!usuario) {
-          throw new NotFoundException('Usuario no encontrado.');
-      }
-
-      await this.usuarioRepository.remove(usuario);
-
-      return new MessageDto('El usuario fue eliminado correctamente.');
-  }
+        return new MessageDto('El usuario fue eliminado correctamente.');
+    }
 }
