@@ -1,12 +1,14 @@
 import {
-    BadRequestException,
-    Body,
+  BadRequestException,
+  Body,
   Controller,
   Delete,
   Get,
   Param,
   Patch,
-  Post, UploadedFile,
+  Post,
+  UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { LibroService } from './libro.service';
@@ -15,6 +17,7 @@ import { UpdateLibroDto } from './dto/update-libro.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('libro')
 export class LibroController {
@@ -47,6 +50,7 @@ export class LibroController {
             callback(null, true);
         }
     }))
+    @UseGuards(AuthGuard)
     create(@Body() createLibroDto: CreateLibroDto, @UploadedFile() file: Express.Multer.File) {
         if(!file) {
             throw new BadRequestException('Se necesita una foto de portada.');
@@ -71,11 +75,13 @@ export class LibroController {
             callback(null, true);
         }
     }))
+    @UseGuards(AuthGuard)
     update(@Param('id') id: number, @Body() updateLibroDto: UpdateLibroDto, @UploadedFile() file?: Express.Multer.File) {
         return this.libroService.update(id, updateLibroDto, file?.filename);
     }
 
     @Delete(':id')
+    @UseGuards(AuthGuard)
     delete(@Param('id') id: number) {
         return this.libroService.delete(id);
     }

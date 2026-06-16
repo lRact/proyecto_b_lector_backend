@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { LibroModule } from './libro/libro.module';
+import { ResenaModule } from './resena/resena.module';
 
 @Module({
     imports: [
@@ -28,7 +29,8 @@ import { LibroModule } from './libro/libro.module';
             inject: [ConfigService],
         }),
         AuthModule,
-        LibroModule
+        LibroModule,
+        ResenaModule
     ],
     controllers: [AppController],
     providers: [AppService],

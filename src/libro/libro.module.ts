@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LibroEntity } from './entities/libro.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([LibroEntity])],
+    imports: [TypeOrmModule.forFeature([LibroEntity]),],
     controllers: [LibroController],
     providers: [LibroService],
 })
