@@ -105,10 +105,7 @@ export class AuthService {
         return { accessToken };
     }
 
-    async update(
-        id: number,
-        updateUsuarioDto: UpdateUsuarioDto,
-    ): Promise<MessageDto> {
+    async update(id: number, updateUsuarioDto: UpdateUsuarioDto,): Promise<MessageDto> {
         const numRound = 10;
         const usuario = await this.getById(id);
 
