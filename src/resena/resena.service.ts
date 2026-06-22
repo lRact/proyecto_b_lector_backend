@@ -25,14 +25,21 @@ export class ResenaService {
         return resenas;
     }
 
-    async create(
-        createResenaDto: CreateResenaDto,
-        idUsuario: number,
-    ): Promise<MessageDto> {
+    async getByUserId(usuario_id: number): Promise<ResenaEntity[]> {
+        const list = await this.resenaRepository.findBy({ usuario_id });
+
+        if(!list.length) {
+            throw new NotFoundException(new MessageDto('Este usuario aun no tiene reseñas.'));
+        }
+
+        return list;
+    }
+
+    async create(createResenaDto: CreateResenaDto): Promise<MessageDto> {
         const exists = await this.resenaRepository.findOne({
             where: {
                 libro: { id_libro: createResenaDto.libro_id },
-                usuario: { id: idUsuario },
+                usuario: { id: createResenaDto.usuario_id },
             },
         });
 
@@ -45,7 +52,7 @@ export class ResenaService {
         const payload = this.resenaRepository.create({
             rating: createResenaDto.rating,
             libro: { id_libro: createResenaDto.libro_id },
-            usuario: { id: idUsuario },
+            usuario: { id: createResenaDto.usuario_id },
         });
 
         await this.resenaRepository.save(payload);
@@ -95,5 +102,17 @@ export class ResenaService {
         }
 
         return afinidades;
+    }
+
+    async delete(id_resena: number): Promise<MessageDto> {
+        const resena = await this.resenaRepository.findOneBy({ id_resena });
+
+        if(!resena) {
+            throw new NotFoundException('Reseña no encontrada.');
+        }
+
+        await this.resenaRepository.delete(id_resena);
+
+        return new MessageDto('Reseña eliminada correctamente.');
     }
 }

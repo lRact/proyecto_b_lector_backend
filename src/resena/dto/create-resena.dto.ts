@@ -9,4 +9,8 @@ export class CreateResenaDto {
     @Min(1)
     @Max(5)
     rating: number;
+
+    @IsNumber()
+    @IsNotEmpty()
+    usuario_id: number;
 }

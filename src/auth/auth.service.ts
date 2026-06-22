@@ -95,13 +95,13 @@ export class AuthService {
             throw new UnauthorizedException('Credenciales invalidas.');
         }
 
-        const token = await this.generateToken(emailExists.id);
+        const token = await this.generateToken(emailExists.id, emailExists.nombre, emailExists.rol);
 
         return { accessToken: token.accessToken };
     }
 
-    async generateToken(userId) {
-        const accessToken = this.jwtService.sign({ userId });
+    async generateToken(userId, nombre, rol) {
+        const accessToken = this.jwtService.sign({ userId, nombre, rol });
         return { accessToken };
     }
 

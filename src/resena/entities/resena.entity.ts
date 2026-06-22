@@ -23,4 +23,10 @@ export class ResenaEntity {
     @ManyToOne(() => LibroEntity, { eager: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'libro_id' })
     libro: LibroEntity;
+
+    @Column()
+    usuario_id: number;
+
+    @Column()
+    libro_id: number;
 }
